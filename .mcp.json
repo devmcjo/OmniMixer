@@ -1,8 +1,17 @@
 {
   "mcpServers": {
     "serena": {
-      "command": "npx",
-      "args": ["-y", "serena-slim"]
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/oraios/serena",
+        "serena-mcp-server",
+        "--enable-web-dashboard",
+        "false",
+        "start-mcp-server"
+      ],
+      "env": {}
     },
     "context7": {
       "command": "npx",
