@@ -32,6 +32,10 @@ public sealed partial class ChannelViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private int _channelIndex;
 
+    /// <summary>선택된 출력 장치 (null이면 미선택)</summary>
+    [ObservableProperty]
+    private AudioDeviceItem? _selectedOutputDevice;
+
     /// <summary>선택된 출력 장치 ID (null이면 미선택)</summary>
     [ObservableProperty]
     private string? _selectedDeviceId;
@@ -82,6 +86,14 @@ public sealed partial class ChannelViewModel : ObservableObject, IDisposable
         {
             Pan = MaxPan;
         }
+    }
+
+    /// <summary>
+    /// 선택된 출력 장치가 변경되면 SelectedDeviceId도 업데이트
+    /// </summary>
+    partial void OnSelectedOutputDeviceChanged(AudioDeviceItem? value)
+    {
+        SelectedDeviceId = value?.Id;
     }
 
     /// <summary>음소거 상태</summary>

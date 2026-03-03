@@ -132,6 +132,7 @@ public class AudioEngine : IDisposable
 - [ ] `MainWindow.xaml`: 8개 `ChannelStripControl` 수평 배치 + Start/Stop 버튼
 - [ ] dB ↔ 슬라이더 값 변환 `IValueConverter` 구현
 - [ ] **오디오 페이더 테이퍼(Audio Fader Taper) 적용**: dB의 로그 특성을 반영하여 UI 슬라이더의 **중간 지점이 체감상 절반 볼륨(-12dB ≈ 50%)**으로 들리도록 로그 컬브 변환을 `IValueConverter`에 통합. 실제 체감에 맥으는 에너지 변화를 제공하여 자연스러운 페이더 등마감 구현
+> **참고**: 트랙 클릭 시 해당 위치로 이동하는 기능(`IsMoveToPointEnabled`)은 복잡성 대비 이점이 적어 **제외함**. 사용자는 Thumb을 직접 드래그하거나 더블클릭으로 기본값(0dB)으로 리셋할 수 있음.
 - [ ] 레벨 미터 컬러 그레이디언트 (초록 → 노랑 → 빨강)
 
 ### 3.2 UI 상태 관리
