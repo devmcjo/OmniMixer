@@ -1,0 +1,16 @@
+<Window x:Class="OmniMixer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="OmniMixer — Step 1: Audio Engine Only"
+        Height="200" Width="500">
+    <!--
+        Step 1 placeholder window.
+        Full mixer UI (8 channel strips, sliders, level meters) will be implemented in Step 3.
+    -->
+    <Grid>
+        <TextBlock Text="OmniMixer — Audio engine loaded. UI coming in Step 3."
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   FontSize="14"/>
+    </Grid>
+</Window>
