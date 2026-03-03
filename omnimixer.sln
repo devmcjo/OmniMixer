@@ -1,0 +1,30 @@
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniMixer", "OmniMixer.csproj", "{4FD338AC-8809-3C81-D258-E863DCD40FFC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AudioEngineTest", "AudioEngineTest\AudioEngineTest.csproj", "{2854C43A-9126-490D-98C7-1729DF5BFAB4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4FD338AC-8809-3C81-D258-E863DCD40FFC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4FD338AC-8809-3C81-D258-E863DCD40FFC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4FD338AC-8809-3C81-D258-E863DCD40FFC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4FD338AC-8809-3C81-D258-E863DCD40FFC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2854C43A-9126-490D-98C7-1729DF5BFAB4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2854C43A-9126-490D-98C7-1729DF5BFAB4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2854C43A-9126-490D-98C7-1729DF5BFAB4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2854C43A-9126-490D-98C7-1729DF5BFAB4}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C4C2F86D-11EB-4925-937B-D772CF5C268E}
+	EndGlobalSection
+EndGlobal

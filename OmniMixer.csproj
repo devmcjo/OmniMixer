@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>OmniMixer</AssemblyName>
+    <RootNamespace>OmniMixer</RootNamespace>
+    <Version>0.1.0</Version>
+    <Authors>OmniMixer Dev Team</Authors>
+    <Description>Multi-channel real-time audio routing mixer for Windows</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- NAudio: Core audio library for WASAPI capture/output, DSP, resampling -->
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <!-- MVVM Toolkit: used in Step 2 for INotifyPropertyChanged etc. -->
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,28 @@
+# Build outputs
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+
+# Claude
+.claude/
+
+# Test project build outputs
+AudioEngineTest/bin/
+AudioEngineTest/obj/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
