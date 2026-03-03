@@ -8,9 +8,7 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>OmniMixer</AssemblyName>
     <RootNamespace>OmniMixer</RootNamespace>
-    <Version>0.1.0</Version>
-    <Authors>OmniMixer Dev Team</Authors>
-    <Description>Multi-channel real-time audio routing mixer for Windows</Description>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,5 +17,6 @@
     <!-- MVVM Toolkit: used in Step 2 for INotifyPropertyChanged etc. -->
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
   </ItemGroup>
+
 
 </Project>
