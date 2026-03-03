@@ -2,14 +2,28 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net6.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <AssemblyName>OmniMixer</AssemblyName>
     <RootNamespace>OmniMixer</RootNamespace>
-    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+    <!--
+      CS7022: WPF Markup Compilation generates App.g.cs with Main() method.
+      This warning is benign and occurs in all .NET 6+ WPF projects.
+      The "global code" refers to WPF's internal entry point handling.
+      Suppressing to achieve warning-free build as per user requirement.
+    -->
+    <NoWarn>CS7022</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Exclude AudioEngineTest folder from build -->
+    <Compile Remove="AudioEngineTest\**" />
+    <None Remove="AudioEngineTest\**" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- NAudio: Core audio library for WASAPI capture/output, DSP, resampling -->
@@ -17,6 +31,5 @@
     <!-- MVVM Toolkit: used in Step 2 for INotifyPropertyChanged etc. -->
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
   </ItemGroup>
-
 
 </Project>

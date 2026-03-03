@@ -11,7 +11,7 @@
 | **제품명** | OmniMixer |
 | **실행 파일** | OmniMixer.exe |
 | **플랫폼** | Windows 10/11 (x64) |
-| **기술 스택** | C# (.NET 6+), WPF, NAudio |
+| **기술 스택** | C# (.NET 8), WPF, NAudio |
 | **의존성** | VB-Audio Virtual Cable (사용자 수동 설치) |
 
 ### 1.1 목적

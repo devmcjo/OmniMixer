@@ -38,31 +38,6 @@
             <Setter Property="Padding" Value="8,4"/>
             <Setter Property="Margin" Value="6,0"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ComboBox">
-                        <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="6">
-                            <Grid>
-                                <ContentPresenter ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
-                                                  Content="{TemplateBinding SelectionBoxItem}"
-                                                  Margin="{TemplateBinding Padding}"
-                                                  VerticalAlignment="Center"
-                                                  HorizontalAlignment="Left"/>
-                                <Path x:Name="Arrow"
-                                      Data="M0,0 L4,4 L8,0"
-                                      Stroke="{StaticResource TextSecondaryBrush}"
-                                      StrokeThickness="1.5"
-                                      HorizontalAlignment="Right"
-                                      VerticalAlignment="Center"
-                                      Margin="0,0,8,0"/>
-                            </Grid>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
         </Style>
 
         <!-- Pan 슬라이더 스타일 (Apple 스타일) -->
@@ -73,6 +48,7 @@
             <Setter Property="Value" Value="0"/>
             <Setter Property="Height" Value="20"/>
             <Setter Property="Margin" Value="8,4"/>
+            <Setter Property="IsMoveToPointEnabled" Value="True"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Slider">
@@ -106,6 +82,7 @@
             <Setter Property="Minimum" Value="0"/>
             <Setter Property="Maximum" Value="1"/>
             <Setter Property="IsDirectionReversed" Value="True"/>
+            <Setter Property="IsMoveToPointEnabled" Value="True"/>
             <Setter Property="Width" Value="36"/>
             <Setter Property="Margin" Value="4,0"/>
             <Setter Property="Template">
@@ -281,8 +258,7 @@
             <!-- 출력 장치 선택 -->
             <ComboBox Grid.Row="1"
                       Style="{StaticResource DeviceComboBoxStyle}"
-                      ItemsSource="{Binding DataContext.OutputDevices,
-                                    RelativeSource={RelativeSource AncestorType=Window}}"
+                      ItemsSource="{Binding OutputDevices}"
                       SelectedValue="{Binding SelectedDeviceId}"
                       SelectedValuePath="Id"
                       DisplayMemberPath="FriendlyName"
@@ -300,7 +276,8 @@
                            Style="{StaticResource ChannelNumberStyle}"
                            FontSize="9"
                            Margin="0,0,0,2"/>
-                <Slider Style="{StaticResource PanSliderStyle}"
+                <Slider x:Name="PanSlider"
+                        Style="{StaticResource PanSliderStyle}"
                         Value="{Binding Pan}"/>
                 <Grid Margin="8,2,8,0">
                     <TextBlock Text="L"
@@ -337,7 +314,8 @@
                              Height="280"/>
 
                 <!-- 볼륨 페이더 -->
-                <Slider Grid.Column="2"
+                <Slider x:Name="VolumeSlider"
+                        Grid.Column="2"
                         Style="{StaticResource VolumeFaderStyle}"
                         Value="{Binding VolumeDb,
                                 Converter={StaticResource DbToSliderPositionConverter}}"
