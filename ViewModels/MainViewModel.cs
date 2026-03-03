@@ -64,15 +64,18 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _audioEngine = new AudioEngine();
         _audioEngine.EngineError += OnEngineError;
 
-        // 8개 채널 ViewModel 초기화
+        // 장치 목록 먼저 로드 (OutputDevices 채우기)
+        LoadDevices();
+
+        // 8개 채널 ViewModel 초기화 (OutputDevices가 채워진 후)
         Channels = new ChannelViewModel[AudioEngine.MaxChannels];
         for (int i = 0; i < AudioEngine.MaxChannels; i++)
         {
-            Channels[i] = new ChannelViewModel(i, _dispatcher);
+            Channels[i] = new ChannelViewModel(i, _dispatcher)
+            {
+                OutputDevices = OutputDevices
+            };
         }
-
-        // 장치 목록 로드
-        LoadDevices();
 
         // PropertyChanged 이벤트 구독 (StartStopButtonText 갱신용)
         PropertyChanged += (s, e) =>

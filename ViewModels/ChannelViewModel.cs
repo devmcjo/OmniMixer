@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -19,6 +20,9 @@ public sealed partial class ChannelViewModel : ObservableObject, IDisposable
 
     private ChannelDspProvider? _dspProvider;
     private readonly Dispatcher _dispatcher;
+
+    /// <summary>출력 장치 목록 (MainViewModel에서 주입)</summary>
+    public ObservableCollection<AudioDeviceItem>? OutputDevices { get; set; }
 
     // ─────────────────────────────────────────────────────────
     //  Observable Properties (CommunityToolkit.Mvvm 자동 생성)

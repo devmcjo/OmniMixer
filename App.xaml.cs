@@ -4,5 +4,6 @@ namespace OmniMixer;
 
 public partial class App : Application
 {
-    // Application entry point. Full startup logic will be added in Step 2 (ViewModel wiring).
+    // WPF automatically generates Main() in App.g.cs
+    // StartupUri in App.xaml handles MainWindow creation
 }
