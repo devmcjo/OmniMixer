@@ -4,234 +4,319 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:OmniMixer.ViewModels"
+        xmlns:ctrl="clr-namespace:OmniMixer.Controls"
+        xmlns:conv="clr-namespace:OmniMixer.Converters"
         mc:Ignorable="d"
-        Title="OmniMixer — Multi-Output Audio Router"
-        Height="600" Width="1000"
-        MinWidth="900" MinHeight="500"
-        WindowStartupLocation="CenterScreen">
+        Title="OmniMixer"
+        Height="700" Width="1100"
+        MinWidth="950" MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        Background="#000000">
 
     <Window.DataContext>
         <vm:MainViewModel />
     </Window.DataContext>
 
     <Window.Resources>
-        <!-- Boolean을 반전하는 컨버터 -->
-        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <!-- 색상 팔레트: Apple Dark Mode -->
+        <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#000000"/>
+        <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#1C1C1E"/>
+        <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#8E8E93"/>
+        <SolidColorBrush x:Key="AccentBlueBrush" Color="#0A84FF"/>
+        <SolidColorBrush x:Key="SystemGreenBrush" Color="#34C759"/>
+        <SolidColorBrush x:Key="SystemRedBrush" Color="#FF453A"/>
 
-        <!-- 채널 스트립 컨테이너 스타일 -->
-        <Style x:Key="ChannelStripBorderStyle" TargetType="Border">
-            <Setter Property="BorderBrush" Value="#444444" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Background" Value="#2d2d2d" />
-            <Setter Property="Margin" Value="2,0" />
-            <Setter Property="Padding" Value="8" />
+        <!-- 타이틀 스타일 -->
+        <Style x:Key="TitleStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="FontSize" Value="24"/>
+            <Setter Property="FontWeight" Value="Light"/>
         </Style>
 
-        <!-- 레벨 미터 ProgressBar 스타일 (임시) -->
-        <Style x:Key="LevelMeterStyle" TargetType="ProgressBar">
-            <Setter Property="Orientation" Value="Vertical" />
-            <Setter Property="Minimum" Value="0" />
-            <Setter Property="Maximum" Value="1" />
-            <Setter Property="Width" Value="12" />
-            <Setter Property="Background" Value="#1a1a1a" />
-            <Setter Property="Foreground" Value="#4CAF50" />
-            <Setter Property="BorderBrush" Value="#333333" />
-            <Setter Property="BorderThickness" Value="1" />
+        <!-- 입력 장치 섹션 라벨 스타일 -->
+        <Style x:Key="InputLabelStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Margin" Value="0,0,12,0"/>
         </Style>
 
-        <!-- 볼륨 슬라이더 스타일 (세로, Inverted) -->
-        <Style x:Key="VolumeSliderStyle" TargetType="Slider">
-            <Setter Property="Orientation" Value="Vertical" />
-            <Setter Property="Minimum" Value="-80" />
-            <Setter Property="Maximum" Value="6" />
-            <Setter Property="Value" Value="0" />
-            <Setter Property="IsDirectionReversed" Value="True" />
-            <Setter Property="TickFrequency" Value="6" />
-            <Setter Property="TickPlacement" Value="BottomRight" />
-            <Setter Property="Width" Value="30" />
-            <Setter Property="Height" Value="150" />
+        <!-- 입력 장치 ComboBox 스타일 -->
+        <Style x:Key="InputDeviceComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Width" Value="320"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Background" Value="#3A3A3C"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#48484A"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8">
+                            <Grid>
+                                <ContentPresenter ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                  Content="{TemplateBinding SelectionBoxItem}"
+                                                  Margin="{TemplateBinding Padding}"
+                                                  VerticalAlignment="Center"
+                                                  HorizontalAlignment="Left"/>
+                                <Path Data="M0,0 L4,4 L8,0"
+                                      Stroke="{StaticResource TextSecondaryBrush}"
+                                      StrokeThickness="1.5"
+                                      HorizontalAlignment="Right"
+                                      VerticalAlignment="Center"
+                                      Margin="0,0,12,0"/>
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
-        <!-- 팬 슬라이더 스타일 (가로) -->
-        <Style x:Key="PanSliderStyle" TargetType="Slider">
-            <Setter Property="Orientation" Value="Horizontal" />
-            <Setter Property="Minimum" Value="-1" />
-            <Setter Property="Maximum" Value="1" />
-            <Setter Property="Value" Value="0" />
-            <Setter Property="TickFrequency" Value="0.5" />
-            <Setter Property="TickPlacement" Value="BottomRight" />
+        <!-- 새로고침 버튼 스타일 -->
+        <Style x:Key="RefreshButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Background" Value="#3A3A3C"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Margin" Value="8,0,0,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="8">
+                            <TextBlock Text="⟳"
+                                       FontSize="16"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#48484A"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
-        <!-- Mute 버튼 스타일 -->
-        <Style x:Key="MuteButtonStyle" TargetType="ToggleButton">
-            <Setter Property="Width" Value="60" />
-            <Setter Property="Height" Value="28" />
-            <Setter Property="Content" Value="MUTE" />
-            <Setter Property="Background" Value="#444444" />
-            <Setter Property="Foreground" Value="White" />
-            <Style.Triggers>
-                <Trigger Property="IsChecked" Value="True">
-                    <Setter Property="Background" Value="#d32f2f" />
-                    <Setter Property="Foreground" Value="White" />
-                </Trigger>
-            </Style.Triggers>
+        <!-- 상태 표시줄 스타일 -->
+        <Style x:Key="StatusBarStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource HeaderBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="#2C2C2E"/>
+            <Setter Property="BorderThickness" Value="0,1,0,0"/>
+            <Setter Property="Padding" Value="20,12"/>
         </Style>
+
+        <!-- 상태 텍스트 스타일 -->
+        <Style x:Key="StatusTextStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="Regular"/>
+        </Style>
+
+        <!-- 실행/정지 버튼 스타일 -->
+        <Style x:Key="StartStopButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="180"/>
+            <Setter Property="Height" Value="48"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Border"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="12"
+                                RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform>
+                                <ScaleTransform ScaleX="1" ScaleY="1"/>
+                            </Border.RenderTransform>
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Border" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="0.97" ScaleY="0.97"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Border" Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Converters -->
+        <conv:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
+        <conv:BooleanToStartStopBrushConverter x:Key="BooleanToStartStopBrushConverter"/>
     </Window.Resources>
 
-    <Grid Background="#1e1e1e">
+    <Grid Background="{StaticResource WindowBackgroundBrush}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />      <!-- 헤더: 입력 장치 선택 -->
-            <RowDefinition Height="*" />          <!-- 채널 스트립 -->
-            <RowDefinition Height="Auto" />      <!-- 상태 표시줄 -->
-            <RowDefinition Height="Auto" />      <!-- 하단 컨트롤: Start/Stop -->
+            <RowDefinition Height="Auto"/>      <!-- 헤더: 타이틀 + 입력 장치 -->
+            <RowDefinition Height="*"/>          <!-- 채널 스트립 영역 -->
+            <RowDefinition Height="Auto"/>      <!-- 상태 표시줄 -->
+            <RowDefinition Height="Auto"/>      <!-- 하단 컨트롤 -->
         </Grid.RowDefinitions>
 
-        <!-- === 헤더: 입력 장치 선택 === -->
-        <Border Grid.Row="0" Background="#2d2d2d" Padding="10" BorderBrush="#444444" BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock Text="Input Device:"
-                          Foreground="White"
-                          VerticalAlignment="Center"
-                          Margin="0,0,10,0"/>
-                <ComboBox Width="300"
-                          ItemsSource="{Binding InputDevices}"
-                          SelectedItem="{Binding SelectedInputDevice}"
-                          DisplayMemberPath="FriendlyName"
-                          IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBooleanConverter}}"
-                          VerticalContentAlignment="Center"/>
+        <!-- === 헤더 영역 === -->
+        <Border Grid.Row="0"
+                Background="{StaticResource HeaderBackgroundBrush}"
+                Padding="24,20"
+                BorderBrush="#2C2C2E"
+                BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>   <!-- 로고/타이틀 -->
+                    <ColumnDefinition Width="*"/>      <!-- 간격 -->
+                    <ColumnDefinition Width="Auto"/>   <!-- 입력 장치 선택 -->
+                </Grid.ColumnDefinitions>
 
-                <Button Content="🔄"
-                        Command="{Binding RefreshDevicesCommand}"
-                        IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBooleanConverter}}"
-                        Margin="10,0,0,0"
-                        Width="30"/>
+                <!-- 타이틀 -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock Text="Omni"
+                               Style="{StaticResource TitleStyle}"
+                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                    <TextBlock Text="Mixer"
+                               Style="{StaticResource TitleStyle}"
+                               Foreground="{StaticResource AccentBlueBrush}"/>
+                    <Border Background="{StaticResource SystemGreenBrush}"
+                            CornerRadius="4"
+                            Padding="6,2"
+                            Margin="12,0,0,0"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="PRO"
+                                   FontSize="10"
+                                   FontWeight="Bold"
+                                   Foreground="Black"/>
+                    </Border>
+                </StackPanel>
 
-                <TextBlock Text="OmniMixer"
-                          Foreground="#4CAF50"
-                          FontSize="18"
-                          FontWeight="Bold"
-                          HorizontalAlignment="Right"
-                          Margin="30,0,0,0"/>
-            </StackPanel>
+                <!-- 입력 장치 선택 -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="INPUT DEVICE"
+                               Style="{StaticResource InputLabelStyle}"
+                               VerticalAlignment="Center"/>
+                    <ComboBox Style="{StaticResource InputDeviceComboBoxStyle}"
+                              ItemsSource="{Binding InputDevices}"
+                              SelectedItem="{Binding SelectedInputDevice}"
+                              DisplayMemberPath="FriendlyName"
+                              IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBooleanConverter}}"/>
+                    <Button Style="{StaticResource RefreshButtonStyle}"
+                            Command="{Binding RefreshDevicesCommand}"
+                            IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBooleanConverter}}"
+                            ToolTip="장치 목록 새로고침"/>
+                </StackPanel>
+            </Grid>
         </Border>
 
         <!-- === 채널 스트립 영역 === -->
-        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-            <ItemsControl ItemsSource="{Binding Channels}" Margin="5">
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Disabled"
+                      Background="{StaticResource WindowBackgroundBrush}">
+            <ItemsControl ItemsSource="{Binding Channels}"
+                          Margin="12,8">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <UniformGrid Rows="1" />
+                        <UniformGrid Rows="1"/>
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
-
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border Style="{StaticResource ChannelStripBorderStyle}">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />   <!-- 채널 번호 -->
-                                    <RowDefinition Height="Auto" />   <!-- 출력 장치 선택 -->
-                                    <RowDefinition Height="Auto" />   <!-- 팬 슬라이더 -->
-                                    <RowDefinition Height="*" />       <!-- 볼륨/미터 -->
-                                    <RowDefinition Height="Auto" />   <!-- Mute 버튼 -->
-                                </Grid.RowDefinitions>
-
-                                <!-- 채널 번호 -->
-                                <TextBlock Grid.Row="0"
-                                          Text="{Binding ChannelIndex, StringFormat='CH {0}'}"
-                                          Foreground="White"
-                                          FontWeight="Bold"
-                                          HorizontalAlignment="Center"
-                                          Margin="0,0,0,5"/>
-
-                                <!-- 출력 장치 선택 -->
-                                <ComboBox Grid.Row="1"
-                                          ItemsSource="{Binding DataContext.OutputDevices, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                          SelectedValue="{Binding SelectedDeviceId}"
-                                          SelectedValuePath="Id"
-                                          DisplayMemberPath="FriendlyName"
-                                          IsEnabled="{Binding DataContext.IsRunning, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={StaticResource InverseBooleanConverter}}"
-                                          Margin="0,0,0,10"
-                                          VerticalContentAlignment="Center">
-                                    <ComboBox.Style>
-                                        <Style TargetType="ComboBox">
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding SelectedDeviceId}" Value="{x:Null}">
-                                                    <Setter Property="ToolTip" Value="출력 장치를 선택하세요" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </ComboBox.Style>
-                                </ComboBox>
-
-                                <!-- 팬 슬라이더 -->
-                                <StackPanel Grid.Row="2" Margin="0,0,0,10">
-                                    <Slider Style="{StaticResource PanSliderStyle}"
-                                            Value="{Binding Pan}" />
-                                    <Grid>
-                                        <TextBlock Text="L" Foreground="#888" HorizontalAlignment="Left" />
-                                        <TextBlock Text="C" Foreground="#888" HorizontalAlignment="Center" />
-                                        <TextBlock Text="R" Foreground="#888" HorizontalAlignment="Right" />
-                                    </Grid>
-                                </StackPanel>
-
-                                <!-- 볼륨/미터 영역 -->
-                                <Grid Grid.Row="3" Margin="0,5">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-
-                                    <!-- 좌측 미터 -->
-                                    <ProgressBar Grid.Column="1"
-                                                  Style="{StaticResource LevelMeterStyle}"
-                                                  Value="{Binding MeterLevelLeft}" />
-
-                                    <!-- 볼륨 슬라이더 -->
-                                    <Slider Grid.Column="2"
-                                             Style="{StaticResource VolumeSliderStyle}"
-                                             Value="{Binding VolumeDb}"
-                                             Margin="8,0" />
-
-                                    <!-- 우측 미터 -->
-                                    <ProgressBar Grid.Column="3"
-                                                  Style="{StaticResource LevelMeterStyle}"
-                                                  Value="{Binding MeterLevelRight}" />
-                                </Grid>
-
-                                <!-- Mute 버튼 -->
-                                <ToggleButton Grid.Row="4"
-                                              Style="{StaticResource MuteButtonStyle}"
-                                              IsChecked="{Binding IsMuted}"
-                                              HorizontalAlignment="Center"
-                                              Margin="0,5,0,0" />
-
-                            </Grid>
-                        </Border>
+                        <ctrl:ChannelStripControl DataContext="{Binding}"/>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
 
         <!-- === 상태 표시줄 === -->
-        <Border Grid.Row="2" Background="#2d2d2d" Padding="10,5" BorderBrush="#444444" BorderThickness="0,1,0,0">
-            <TextBlock Text="{Binding StatusMessage}"
-                      Foreground="#aaa"
-                      FontSize="12" />
+        <Border Grid.Row="2"
+                Style="{StaticResource StatusBarStyle}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- 상태 메시지 -->
+                <TextBlock Grid.Column="0"
+                           Style="{StaticResource StatusTextStyle}"
+                           Text="{Binding StatusMessage}"/>
+
+                <!-- 채널 카운트 -->
+                <TextBlock Grid.Column="1"
+                           Text="{Binding IsRunning, StringFormat='{}8 CHANNELS ACTIVE'}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource StatusTextStyle}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsRunning}" Value="False">
+                                    <Setter Property="Text" Value="STANDBY"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
         </Border>
 
         <!-- === 하단 컨트롤: Start/Stop === -->
-        <Border Grid.Row="3" Background="#2d2d2d" Padding="15" BorderBrush="#444444" BorderThickness="0,1,0,0">
-            <Button Command="{Binding StartStopCommand}"
-                    Content="{Binding StartStopButtonText}"
-                    Width="150" Height="40"
-                    FontSize="16"
-                    FontWeight="Bold"
-                    Background="{Binding IsRunning, Converter={StaticResource BooleanToStartStopBrushConverter}}"
-                    Foreground="White" />
-        </Border>
+        <Border Grid.Row="3"
+                Background="{StaticResource HeaderBackgroundBrush}"
+                Padding="24,20"
+                BorderBrush="#2C2C2E"
+                BorderThickness="0,1,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
+                <!-- 좌측 정보 -->
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="Multi-Output Audio Router"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               FontSize="11"/>
+                    <TextBlock Text="VB-Cable → 8 Physical Outputs"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               FontSize="10"
+                               Opacity="0.7"/>
+                </StackPanel>
+
+                <!-- Start/Stop 버튼 -->
+                <Button Grid.Column="1"
+                        Style="{StaticResource StartStopButtonStyle}"
+                        Command="{Binding StartStopCommand}"
+                        Content="{Binding StartStopButtonText}"
+                        Background="{Binding IsRunning, Converter={StaticResource BooleanToStartStopBrushConverter}}"
+                        IsEnabled="{Binding IsTransitioning, Converter={StaticResource InverseBooleanConverter}}"/>
+
+                <!-- 우측 레이아웃 맞춤용 -->
+                <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <TextBlock Text="OmniMixer v1.0"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               FontSize="10"
+                               Opacity="0.5"/>
+                </StackPanel>
+            </Grid>
+        </Border>
     </Grid>
 </Window>
