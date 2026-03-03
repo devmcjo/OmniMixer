@@ -291,12 +291,14 @@ public sealed class AudioEngine : IDisposable
         // → 채널 간 공유 상태 없음, 데드락 위험 없음
         foreach (var channel in _channels)
         {
-            // Buffer가 null이면 이 채널은 비활성(장치 미선택 또는 오류 이후)
-            if (channel.Buffer is null || !channel.IsActive) continue;
+            // P1 Fix: Race Condition 방어
+            // channel.Buffer는 다른 스레드에서 null로 설정될 수 있으므로
+            // 먼저 IsActive만 체크하고 Buffer 접근은 null-conditional로 처리
+            if (!channel.IsActive) continue;
 
             // AddSamples: 내부적으로 채널 자체의 lock만 사용
             // DiscardOnBufferOverflow = true이므로 가득 찼을 때 가장 오래된 데이터 드롭
-            channel.Buffer.AddSamples(_addSamplesBuffer, 0, byteCount);
+            channel.Buffer?.AddSamples(_addSamplesBuffer, 0, byteCount);
         }
     }
 

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
@@ -217,13 +218,28 @@ public sealed class OutputChannel : IDisposable
     /// </summary>
     private void SafeStopAndDispose()
     {
-        try { _wasapiOut?.Stop(); } catch { /* 무시: 이미 중지된 경우 */ }
+        // P1 Fix: 예외 로깅 추가 (디버깅 지원)
+        try { _wasapiOut?.Stop(); }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[OutputChannel {ChannelIndex}] Stop error: {ex.Message}");
+        }
 
         // MediaFoundationResampler는 IDisposable
         if (_finalSource is IDisposable disposableFinal)
-            try { disposableFinal.Dispose(); } catch { /* 무시 */ }
+        {
+            try { disposableFinal.Dispose(); }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[OutputChannel {ChannelIndex}] Resampler dispose error: {ex.Message}");
+            }
+        }
 
-        try { _wasapiOut?.Dispose(); } catch { /* 무시 */ }
+        try { _wasapiOut?.Dispose(); }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[OutputChannel {ChannelIndex}] WasapiOut dispose error: {ex.Message}");
+        }
 
         _wasapiOut = null;
         _finalSource = null;
