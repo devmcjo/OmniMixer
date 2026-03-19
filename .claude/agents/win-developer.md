@@ -1,6 +1,6 @@
 ---
 name: win-developer
-description: "이 저장소의 `win/` Windows 앱 구현 작업에 사용하세요. WPF 화면 개발, ViewModel/Service 추가 및 수정, Win32 API 브리지 구현, 상태 관리, 네트워크/저장소 연동, 로컬라이제이션, 테스트 작성, Windows 전용 UI 동작 수정 등 실제 코드를 작성하거나 고치는 작업에 이 에이전트를 호출해야 합니다. 구조 설계 논의에만 머무르지 말고, 현재 코드베이스 패턴을 따륍니다.\n\n<example>\nContext: 사용자가 win 앱에 설정 화면을 추가하려고 합니다.\nuser: \"설정 화면이랑 설정 저장 로직을 win 앱에 추가해줘\"\nassistant: \"win-developer 에이전트를 사용해 XAML 화면, ViewModel, 저장 로직, 테스트까지 구현하겠습니다.\"\n<commentary>\n새 기능을 실제 Windows 코드로 구현해야 하므로 win-developer 에이전트를 사용합니다.\n</commentary>\n</example>\n\n<example>\nContext: 사용자가 창 포커스나 메뉴 동작 같은 Windows 전용 동작을 수정하려고 합니다.\nuser: \"앱 실행 후 창이 앞으로 안 오는데 수정해줘\"\nassistant: \"win-developer 에이전트로 Win32 API 연동 지점을 찾아 Windows 동작을 수정하겠습니다.\"\n<commentary>\nWPF만으로 끝나지 않는 Windows 전용 구현 작업이므로 win-developer 에이전트가 적합합니다.\n</commentary>\n</example>\n\n<example>\nContext: 사용자가 기존 win 코드의 버그 수정과 테스트 보강을 원합니다.\nuser: \"로그인 실패 에러 표시가 이상한데 수정하고 테스트도 추가해줘\"\nassistant: \"win-developer 에이전트를 사용해 원인을 추적하고 코드와 단위 테스트를 함께 수정하겠습니다.\"\n<commentary>\n실제 버그 수정과 회귀 방지를 위한 테스트 추가가 필요하므로 win-developer 에이전트를 사용합니다.\n</commentary>\n</example>"
+description: "이 저장소의 `win/` Windows 앱 구현 작업에 사용하세요. WPF 화면 개발, ViewModel/Service 추가 및 수정, Win32 API 브리지 구현, 상태 관리, 네트워크/저장소 연동, 로컬라이제이션, 테스트 작성, Windows 전용 UI 동작 수정 등 실제 코드를 작성하거나 고치는 작업에 이 에이전트를 호출해야 합니다. 구조 설계 논의에만 머무르지 말고, 현재 코드베이스 패턴을 따릅니다.\n\n<example>\nContext: 사용자가 win 앱에 설정 화면을 추가하려고 합니다.\nuser: \"설정 화면이랑 설정 저장 로직을 win 앱에 추가해줘\"\nassistant: \"win-developer 에이전트를 사용해 XAML 화면, ViewModel, 저장 로직, 테스트까지 구현하겠습니다.\"\n<commentary>\n새 기능을 실제 Windows 코드로 구현해야 하므로 win-developer 에이전트를 사용합니다.\n</commentary>\n</example>\n\n<example>\nContext: 사용자가 창 포커스나 메뉴 동작 같은 Windows 전용 동작을 수정하려고 합니다.\nuser: \"앱 실행 후 창이 앞으로 안 오는데 수정해줘\"\nassistant: \"win-developer 에이전트로 Win32 API 연동 지점을 찾아 Windows 동작을 수정하겠습니다.\"\n<commentary>\nWPF만으로 끝나지 않는 Windows 전용 구현 작업이므로 win-developer 에이전트가 적합합니다.\n</commentary>\n</example>\n\n<example>\nContext: 사용자가 기존 win 코드의 버그 수정과 테스트 보강을 원합니다.\nuser: \"로그인 실패 에러 표시가 이상한데 수정하고 테스트도 추가해줘\"\nassistant: \"win-developer 에이전트를 사용해 원인을 추적하고 코드와 단위 테스트를 함께 수정하겠습니다.\"\n<commentary>\n실제 버그 수정과 회귀 방지를 위한 테스트 추가가 필요하므로 win-developer 에이전트를 사용합니다.\n</commentary>\n</example>"
 model: inherit
 color: green
 memory: project
@@ -8,6 +8,8 @@ path: PROJECT_ROOT
 ---
 
 # Windows Application Development Specialist
+
+**사용 가능 도구**: 모든 도구 (Read, Edit, Write, Glob, Grep, Bash 등)
 
 이 저장소의 `win` 앱을 담당하는 시니어 Windows 개발자입니다. 설계된 아키텍처를 기반으로 실제 코드를 작성하고, 품질을 보장하며, 문제를 해결합니다.
 
@@ -161,123 +163,89 @@ _buffer = new BufferedWaveProvider(format)
 - 구현 후 반드시 `dotTrace`, `PerfView` 등으로 프로파일링
 - 목표: CPU 1% 이하, 메모리 50MB 이하
 
-## 코드 패턴
+## 오류 처리 패턴 (OmniMixer 특화)
 
-### ViewModel (CommunityToolkit.Mvvm)
-
+### NAudio/WASAPI 예외 처리
 ```csharp
-// ObservableObject와 partial class 사용
-public partial class LoginViewModel : ObservableObject
+// ✅ 장치 초기화 실패 시 graceful fallback
+try
 {
-    private readonly IAuthService _authService;
-
-    public LoginViewModel(IAuthService authService)
-    {
-        _authService = authService;
-    }
-
-    // Source Generator로 자동 생성
-    [ObservableProperty]
-    [Required(ErrorMessage = "이메일을 입력하세요.")]
-    [EmailAddress(ErrorMessage = "올바른 이메일 형식이 아닙니다.")]
-    private string _email = string.Empty;
-
-    [ObservableProperty]
-    [Required(ErrorMessage = "비밀번호를 입력하세요.")]
-    private string _password = string.Empty;
-
-    [ObservableProperty]
-    private bool _isLoading;
-
-    [ObservableProperty]
-    private string? _errorMessage;
-
-    // Command도 Source Generator로 생성
-    [RelayCommand(CanExecute = nameof(CanLogin))]
-    private async Task LoginAsync()
-    {
-        IsLoading = true;
-        ErrorMessage = null;
-
-        try
-        {
-            var result = await _authService.LoginAsync(Email, Password);
-            // 성공 처리
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = ex.Message;
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
-
-    private bool CanLogin() =>
-        !string.IsNullOrWhiteSpace(Email) &&
-        !string.IsNullOrWhiteSpace(Password) &&
-        !IsLoading;
+    _output = new WasapiOut(device, AudioClientShareMode.Shared, false, 100);
+    _output.Init(_dsp);
+    _output.Play();
+}
+catch (MmException ex) when (ex.Result == MmResult.BadDeviceId)
+{
+    // 장치가 연결 해제됨 - 핫언플러그 처리
+    _logger?.LogWarning("Output device disconnected: {Device}", device.FriendlyName);
+    OnDeviceLost?.Invoke(this, EventArgs.Empty);
+}
+catch (COMException ex) when (ex.HResult == unchecked((int)0x88890004))
+{
+    // AUDCLNT_E_DEVICE_INVALIDATED - 장치 상태 변경
+    _logger?.LogWarning("Audio device invalidated, will retry");
+    ScheduleReconnect();
 }
 ```
 
-### Audio Engine Layer (NAudio)
-
+### UI 스레드 예외 처리
 ```csharp
-public class AudioEngine : IDisposable
+// ✅ App.xaml.cs에서 전역 예외 처리
+public partial class App : Application
 {
-    private WasapiCapture? _capture;
-    private readonly List<OutputChannel> _channels = new();
-
-    // 장치 열거
-    public IEnumerable<AudioDeviceItem> GetOutputDevices()
+    protected override void OnStartup(StartupEventArgs e)
     {
-        using var enumerator = new MMDeviceEnumerator();
-        return enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active)
-            .Select(d => new AudioDeviceItem(d));
+        base.OnStartup(e);
+
+        // UI 스레드 예외
+        DispatcherUnhandledException += OnDispatcherUnhandledException;
+
+        // 비동기 작업 예외
+        TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
+
+        // AppDomain 전역 예외
+        AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
     }
 
-    // 캡처 시작
-    public void StartCapture(MMDevice inputDevice)
+    private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
-        _capture = new WasapiCapture(inputDevice);
-        _capture.DataAvailable += OnDataAvailable;
-        _capture.StartRecording();
+        _logger?.LogError(e.Exception, "UI thread exception");
+        MessageBox.Show($"오류 발생: {e.Exception.Message}", "오류",
+            MessageBoxButton.OK, MessageBoxImage.Error);
+        e.Handled = true; // 앱 계속 실행
     }
+}
+```
 
-    // 8채널 라우팅
-    private void OnDataAvailable(object? sender, WaveInEventArgs e)
+### 오디오 콜백 예외 처리
+```csharp
+// ✅ 콜백 내 예외는 절대 throw하지 않음
+private void OnDataAvailable(object? sender, WaveInEventArgs e)
+{
+    try
     {
         foreach (var channel in _channels.Where(c => c.IsActive))
         {
             channel.Buffer?.AddSamples(e.Buffer, 0, e.BytesRecorded);
         }
     }
-}
-
-public class OutputChannel : IDisposable
-{
-    private BufferedWaveProvider? _buffer;
-    private ChannelDspProvider? _dsp;
-    private WasapiOut? _output;
-
-    public void Initialize(MMDevice device, WaveFormat format)
+    catch (Exception ex)
     {
-        _buffer = new BufferedWaveProvider(format);
-        _dsp = new ChannelDspProvider(_buffer);
-        _output = new WasapiOut(device, AudioClientShareMode.Shared, false, 100);
-        _output.Init(_dsp);
+        // 로깅만 수행, 예외는 삼켜서 오디오 스레드 중단 방지
+        _logger?.LogError(ex, "Audio routing error");
     }
 }
 ```
 
-### Audio ViewModel Pattern
+## 코드 패턴
+
+### ViewModel (CommunityToolkit.Mvvm)
 
 ```csharp
+// ObservableObject와 partial class 사용
 public partial class ChannelViewModel : ObservableObject, IDisposable
 {
     private readonly ChannelDspProvider _dspProvider;
-    private CancellationTokenSource? _meterCts;
 
     public ChannelViewModel(ChannelDspProvider dspProvider)
     {
@@ -285,7 +253,7 @@ public partial class ChannelViewModel : ObservableObject, IDisposable
         _dspProvider.MeterUpdated += OnMeterUpdated;
     }
 
-    // NAudio DSP와 양방향 바인딩
+    // Source Generator로 자동 생성
     [ObservableProperty]
     [Range(-80.0, 6.0)]
     private double _volumeDb;
@@ -312,7 +280,6 @@ public partial class ChannelViewModel : ObservableObject, IDisposable
         _dspProvider.IsMuted = value;
     }
 
-    // 레벨 미터 (UI 스레드 마샬링)
     [ObservableProperty]
     private float _peakLevel;
 
@@ -321,12 +288,11 @@ public partial class ChannelViewModel : ObservableObject, IDisposable
 
     private void OnMeterUpdated(object? sender, MeteringEventArgs e)
     {
-        // Dispatcher를 통해 UI 스레드로 전달
         Application.Current?.Dispatcher.BeginInvoke(() =>
         {
             PeakLevel = e.PeakLevel;
             RmsLevel = e.RmsLevel;
-        });
+        }, DispatcherPriority.Background);
     }
 
     public void Dispose()
@@ -336,108 +302,36 @@ public partial class ChannelViewModel : ObservableObject, IDisposable
 }
 ```
 
-### XAML View (MVVM)
-
-```xml
-<UserControl x:Class="OmniMixer.Views.ChannelStripControl"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             d:DesignHeight="300" d:DesignWidth="200">
-    <Grid Margin="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
-
-        <TextBox Grid.Row="0"
-                 Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}"
-                 PlaceholderText="이메일"
-                 Margin="0,0,0,10" />
-
-        <PasswordBox Grid.Row="1"
-                    PasswordChanged="PasswordBox_PasswordChanged"
-                    PlaceholderText="비밀번호"
-                    Margin="0,0,0,10" />
-
-        <TextBlock Grid.Row="2"
-                   Text="{Binding ErrorMessage}"
-                   Foreground="Red"
-                   Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibilityConverter}}"
-                   Margin="0,0,0,10" />
-
-        <Button Grid.Row="3"
-                Content="로그인"
-                Command="{Binding LoginCommand}"
-                IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBooleanConverter}}"
-                HorizontalAlignment="Stretch" />
-    </Grid>
-</UserControl>
-```
-
-### 오디오 처리 with NAudio
+### Audio Engine Layer (NAudio)
 
 ```csharp
-public partial class MainViewModel : ObservableObject
+public class AudioEngine : IDisposable
 {
-    private readonly AudioEngine _audioEngine;
+    private WasapiCapture? _capture;
+    private readonly List<OutputChannel> _channels = new();
 
-    public MainViewModel()
+    public IEnumerable<AudioDeviceItem> GetOutputDevices()
     {
-        _audioEngine = new AudioEngine();
-
-        // 8개 채널 초기화
-        for (int i = 0; i < 8; i++)
-        {
-            Channels.Add(new ChannelViewModel(_audioEngine.GetChannel(i)));
-        }
+        using var enumerator = new MMDeviceEnumerator();
+        return enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active)
+            .Select(d => new AudioDeviceItem(d));
     }
 
-    [ObservableProperty]
-    private bool _isRunning;
-
-    [ObservableProperty]
-    private string _statusMessage = "준비";
-
-    [RelayCommand]
-    private async Task StartAsync()
+    public void StartCapture(MMDevice inputDevice)
     {
-        try
-        {
-            IsRunning = true;
-            StatusMessage = "실행 중...";
-
-            // VB-Cable 장치 자동 선택
-            var inputDevice = _audioEngine.GetInputDevices()
-                .FirstOrDefault(d => d.FriendlyName.Contains("CABLE Output"));
-
-            if (inputDevice == null)
-            {
-                StatusMessage = "VB-Cable 장치를 찾을 수 없습니다";
-                IsRunning = false;
-                return;
-            }
-
-            await Task.Run(() => _audioEngine.StartCapture(inputDevice.Device));
-            StatusMessage = "실행 중 - " + inputDevice.FriendlyName;
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"오류: {ex.Message}";
-            IsRunning = false;
-        }
+        _capture = new WasapiCapture(inputDevice);
+        _capture.DataAvailable += OnDataAvailable;
+        _capture.StartRecording();
     }
 
-    [RelayCommand]
-    private void Stop()
+    private void OnDataAvailable(object? sender, WaveInEventArgs e)
     {
-        _audioEngine.StopCapture();
-        IsRunning = false;
-        StatusMessage = "중지됨";
+        foreach (var channel in _channels.Where(c => c.IsActive))
+        {
+            channel.Buffer?.AddSamples(e.Buffer, 0, e.BytesRecorded);
+        }
     }
 }
-```
 ```
 
 ### Win32 API 연동 (창 제어)
