@@ -10,8 +10,8 @@ obj/
 *.suo
 *.user
 
-# Claude
-.claude/
+# local setting
+.claude/settings.local.json
 
 # Test project build outputs
 AudioEngineTest/bin/
