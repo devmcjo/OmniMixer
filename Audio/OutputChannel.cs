@@ -88,11 +88,14 @@ public sealed class OutputChannel : IDisposable
         // 이 채널만의 독립 버퍼. IEEE Float 포맷으로 고정.
         // BufferDuration = 200ms: 클럭 드리프트에 대한 여유 공간 확보.
         // DiscardOnBufferOverflow = true: Overflow 시 오래된 데이터를 조용히 드롭(Tick 방지 조치).
+        int bufferDurationMs = 500;  // 500ms 버퍼 - 끊김 방지와 지연 시간의 균형
         _buffer = new BufferedWaveProvider(captureFloatFormat)
         {
-            BufferDuration = TimeSpan.FromMilliseconds(200),
-            DiscardOnBufferOverflow = true  // Overflow → 오래된 데이터 자동 드롭 (Tick 최소화)
+            BufferDuration = TimeSpan.FromMilliseconds(bufferDurationMs),
+            DiscardOnBufferOverflow = false  // P0 FIX: false로 변경 - 데이터 보존 우선
         };
+        AudioLogger.WriteLog(AudioLogger.LogLevel.Info, $"Channel {ChannelIndex}: BufferDuration={bufferDurationMs}ms, " +
+                        $"Latency=200ms, CaptureFormat={captureFloatFormat.SampleRate}Hz/{captureFloatFormat.Channels}ch");
 
         // ── 2. ChannelDspProvider 생성 ────────────────────────────────────
         // 버퍼로부터 float 샘플을 읽어 Volume/Pan/Mute를 적용하는 ISampleProvider
@@ -106,12 +109,14 @@ public sealed class OutputChannel : IDisposable
         // ── 3. WasapiOut 생성 ────────────────────────────────────────────
         // AudioClientShareMode.Shared: 다른 앱과 장치를 공유 (WASAPI 공유 모드)
         // latency = 80ms: 끊김 방지용 넉넉한 버퍼 (PRD NFR-01 참조)
+        // P0 FIX: latency를 200ms로 증가 (80ms → 200ms) - 끊김/오버런 방지
         _wasapiOut = new WasapiOut(device, AudioClientShareMode.Shared,
-            useEventSync: true, latency: 80);
+            useEventSync: false, latency: 200);
 
         // ── 4. 리샘플링 필요 여부 판단 ───────────────────────────────────
         // WasapiOut 공유 모드에서 장치 믹스 포맷을 얻어 캡처 포맷과 비교
         var deviceMixFormat = device.AudioClient.MixFormat;
+        AudioLogger.WriteLog(AudioLogger.LogLevel.Info, $"Channel {ChannelIndex}: Device Mix Format = {deviceMixFormat.SampleRate}Hz, {deviceMixFormat.Channels}ch, {deviceMixFormat.BitsPerSample}bit, {deviceMixFormat.Encoding}");
 
         bool needsResampling =
             deviceMixFormat.SampleRate    != captureFloatFormat.SampleRate ||
@@ -122,20 +127,19 @@ public sealed class OutputChannel : IDisposable
         if (needsResampling)
         {
             // ── 4a. 리샘플링 필요: MediaFoundationResampler 삽입 ─────────
-            // ISampleProvider → IWaveProvider 변환 후 리샘플러에 연결
+            // 포맷 변환이 필요함 (IEEE Float 32bit -> PCM 16bit 등)
+            AudioLogger.WriteLog(AudioLogger.LogLevel.Info, $"Channel {ChannelIndex}: Resampling enabled ({captureFloatFormat.Encoding}->{deviceMixFormat.Encoding})");
             var waveProviderSource = new SampleToWaveProvider(_dspProvider);
             var resampler = new MediaFoundationResampler(waveProviderSource, deviceMixFormat)
             {
-                // Quality 35: 품질과 CPU 부하의 균형점 (60=최고품질, 1=최저품질)
-                // Step 4 통합 테스트에서 CPU 측정 후 최적값으로 튜닝 예정
-                ResamplerQuality = 35
+                ResamplerQuality = 60 // 최고 품질 (지연 증가 감수)
             };
             _finalSource = resampler;
         }
         else
         {
             // ── 4b. 리샘플링 불필요: DSP → WasapiOut 직결 ───────────────
-            // ISampleProvider를 IWaveProvider로 래핑
+            AudioLogger.WriteLog(AudioLogger.LogLevel.Info, $"Channel {ChannelIndex}: No resampling needed");
             _finalSource = new SampleToWaveProvider(_dspProvider);
         }
 
@@ -160,15 +164,42 @@ public sealed class OutputChannel : IDisposable
     {
         if (_wasapiOut is null || IsActive) return;
 
+        AudioLogger.WriteLog(AudioLogger.LogLevel.Debug, $"[Ch{ChannelIndex}] Start() called");
+
         try
         {
+            // P0 FIX: 버퍼 프리필 - 출력 시작 전에 최소 50ms 데이터 확인
+            int timeoutMs = 500;
+            int prefillMs = 50;
+            int waited = 0;
+            int initialBufferedMs = 0;
+
+            if (_buffer != null)
+            {
+                initialBufferedMs = (int)(_buffer.BufferedBytes * 1000.0 / _buffer.WaveFormat.AverageBytesPerSecond);
+                AudioLogger.WriteLog(AudioLogger.LogLevel.Debug, $"[Ch{ChannelIndex}] Prefill start: {initialBufferedMs}ms buffered");
+            }
+
+            while (_buffer != null && waited < timeoutMs)
+            {
+                int bufferedMs = (int)(_buffer.BufferedBytes * 1000.0 / _buffer.WaveFormat.AverageBytesPerSecond);
+                if (bufferedMs >= prefillMs) break;
+                Thread.Sleep(5);
+                waited += 5;
+            }
+
+            int finalBufferedMs = _buffer != null ? (int)(_buffer.BufferedBytes * 1000.0 / _buffer.WaveFormat.AverageBytesPerSecond) : 0;
+            AudioLogger.WriteLog(AudioLogger.LogLevel.Info, $"[Ch{ChannelIndex}] Prefill complete: waited {waited}ms, buffer={finalBufferedMs}ms");
+
+            AudioLogger.WriteLog(AudioLogger.LogLevel.Debug, $"[Ch{ChannelIndex}] Calling WasapiOut.Play()...");
             _wasapiOut.Play();
             IsActive = true;
+            AudioLogger.WriteLog(AudioLogger.LogLevel.Debug, $"[Ch{ChannelIndex}] WasapiOut.Play() completed, IsActive=true");
         }
         catch (Exception ex)
         {
-            // 재생 시작 실패 — 이 채널만 오류 처리, 다른 채널에 영향 없음
             IsActive = false;
+            AudioLogger.WriteLog(AudioLogger.LogLevel.Error, $"[Ch{ChannelIndex}] Start() failed: {ex.Message}", ex);
             ChannelError?.Invoke(this, $"채널 {ChannelIndex} 시작 실패: {ex.Message}");
         }
     }
