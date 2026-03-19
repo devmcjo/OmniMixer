@@ -19,6 +19,26 @@
     <NoWarn>CS7022</NoWarn>
   </PropertyGroup>
 
+  <!-- 공통 Publish 설정 (Debug/Release 모두 동일 구조) -->
+  <PropertyGroup>
+    <!-- 런타임 포함 -->
+    <SelfContained>true</SelfContained>
+    <!-- 단일 EXE 파일로 빌드 -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <!-- 네이티브 라이브러리도 EXE에 포함 -->
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <!-- ReadyToRun 비활성화 (단일 파일 호환성) -->
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <!-- 트리밍 비활성화 (WPF 호환성) -->
+    <PublishTrimmed>false</PublishTrimmed>
+  </PropertyGroup>
+
+  <!-- Release 전용 설정 -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <!-- 단일 파일 압축 활성화 (Release만) -->
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+  </PropertyGroup>
+
   <ItemGroup>
     <!-- Exclude AudioEngineTest folder from build -->
     <Compile Remove="AudioEngineTest\**" />
