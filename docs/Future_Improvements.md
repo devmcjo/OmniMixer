@@ -68,26 +68,13 @@ _wasapiOut = new WasapiOut(device, AudioClientShareMode.Shared,
 
 ---
 
-## 4. ResamplerQuality: 60 (최고 품질)
+## 4. ResamplerQuality: 60 (최고 품질) CPU 점유율 문제 발생.  ✅ 완료
 
-**관련 파일**: `Audio/OutputChannel.cs:133`
-
-### 현재 상태
+### 변경 내역
+~~ResamplerQuality = 45~~
 ```csharp
-ResamplerQuality = 60 // 기본값: 35 → 변경: 60 (최고 품질)
-```
-
-### 영향
-- 최고 품질은 CPU 부하 증가
-- 불필요하게 높은 품질 설정일 수 있음
-
-### 권장 수정 방향
-1. 중간 품질(35-45)에서 시작
-2. 실제 CPU 사용량 측정
-3. 청각적으로 차이가 없는 최저 품질 값 찾기
-
-### 우선순위: 낮음
-- 현재 CPU 사용량이 문제 없다면 유지 가능
+// 옵션화 처리 진행. Min(10)/Low(20)/Mid(35)/High(45)/Max(60) - Default : High // 옵션화 처리 진행. Min(10)/Low(20)/Mid(35)/High(45)/Max(60) - Default : High
+ResamplerQuality = (int)settings.ResampleQuality
 
 ---
 
