@@ -148,35 +148,40 @@ public sealed class ChannelDspProvider : ISampleProvider
     /// <param name="offset">buffer 내 시작 오프셋 (float 단위)</param>
     /// <param name="count">요청된 float 샘플 수 (프레임 수 × 2)</param>
     /// <returns>실제 채운 float 샘플 수</returns>
+    private long _readCallCount = 0;
+
     public int Read(float[] buffer, int offset, int count)
     {
+        _readCallCount++;
+
+        AudioLogger.WriteLog(AudioLogger.LogLevel.Debug, $"[READ#{_readCallCount}] [Ch{_channelIndex}] ENTRY: Requested={count} samples");
+
         // === P0 FIX #3: DSP 파라미터 스냅샷 복사 ===
-        // UI 스레드가 _volumeDb, _pan, _isMuted를 변경할 수 있으므로
-        // Read() 시작 시점에 로컬 변수로 스냅샷을 복사하여 일관성 보장.
         float volDb = _volumeDb;
         float pan = _pan;
         bool muted = _isMuted;
 
         // ── 1. BufferedWaveProvider에서 바이트 읽기 ──────────────────────
-        // BufferedWaveProvider.Read()는 byte[] 인터페이스이므로
-        // float 1개 = 4바이트임을 고려하여 byte 버퍼를 준비한다.
         int byteCount = count * sizeof(float);
 
         // 재할당을 최소화하기 위해 기존 버퍼가 충분하면 재사용
         if (_readByteBuffer.Length < byteCount)
             _readByteBuffer = new byte[byteCount];
 
+        int bufferedBeforeRead = _sourceBuffer.BufferedBytes;
         int bytesRead = _sourceBuffer.Read(_readByteBuffer, 0, byteCount);
         int samplesRead = bytesRead / sizeof(float);
+        int bufferedAfterRead = _sourceBuffer.BufferedBytes;
+
+        AudioLogger.WriteLog(AudioLogger.LogLevel.Debug, $"[READ#{_readCallCount}] [Ch{_channelIndex}] BUFFER: " +
+                         $"Before={bufferedBeforeRead}B, Requested={byteCount}B, " +
+                         $"Read={bytesRead}B ({samplesRead} samples), After={bufferedAfterRead}B");
 
         if (samplesRead == 0)
         {
-            // 버퍼에 데이터가 없는 경우(Underrun): 무음으로 채움
-            // BufferedWaveProvider 자체도 0을 반환하지만 명시적으로 처리
             Array.Clear(buffer, offset, count);
-            // === P0 FIX #1: 실제 읽은 샘플 수(0)를 반환 ===
-            // return count; ← 버그: WASAPI가 데이터가 준비됐다고 오인
-            return samplesRead; // 정확히 0을 반환하여 WASAPI가 재요청하도록 함
+            AudioLogger.WriteLog(AudioLogger.LogLevel.Warning, $"[READ#{_readCallCount}] [Ch{_channelIndex}] UNDERRUN! Buffer empty, returning silence");
+            return samplesRead;
         }
 
         // byte[] → float[] 변환: MemoryMarshal로 zero-copy 재해석
@@ -261,6 +266,7 @@ public sealed class ChannelDspProvider : ISampleProvider
             FireMeterUpdate(channels == 2);
         }
 
+        AudioLogger.WriteLog(AudioLogger.LogLevel.Debug, $"[READ#{_readCallCount}] [Ch{_channelIndex}] EXIT: Returning {samplesRead} samples");
         return samplesRead;
     }
 
