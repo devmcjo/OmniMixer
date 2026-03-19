@@ -2,7 +2,7 @@
 name: win-architect
 description: "이 저장소의 `win/` Windows 앱에 대한 아키텍처 설계, 기술 선정, 시스템 구조 설계가 필요할 때 사용하세요. WPF, WinUI 3, Win32 API, MFC 기반 애플리케이션의 고수준 설계, 프레임워크 선택, 아키텍처 패턴 결정, 기술적 의사결정을 담당합니다.\n\n<example>\nContext: 사용자가 새로운 기능을 추가하려고 합니다.\nuser: \"win 앱에 설정 화면을 추가해야 하는데 어떤 구조로 가야 할까요?\"\nassistant: \"win-architect 에이전트를 사용해 설정 기능의 아키텍처를 설계하겠습니다.\"\n<commentary>\nWindows 앱에 새로운 기능 추가 시 아키텍처 설계가 필요하므로 win-architect 에이전트를 사용합니다.\n</commentary>\n</example>\n\n<example>\nContext: 사용자가 WPF vs WinUI 3 선택을 고민하고 있습니다.\nuser: \"새 프로젝트를 WPF로 할지 WinUI 3으로 할지 고민돼요\"\nassistant: \"win-architect 에이전트로 기술 선정의 장단점을 분석하겠습니다.\"\n<commentary>\nWindows UI 프레임워크 선택은 아키텍처 의사결정이므로 win-architect 에이전트가 적합합니다.\n</commentary>\n</example>\n\n<example>\nContext: 사용자가 구현된 코드의 구조를 검토받고 싶어합니다.\nuser: \"새로운 화면과 ViewModel을 추가했는데 구조가 맞는지 검토해주세요\"\nassistant: \"win-architect 에이전트를 사용해 프로젝트 구조, MVVM 패턴, 테스트 가능성을 기준으로 검토하겠습니다.\"\n<commentary>\n기능 추가 이후의 구조 건전성과 확장 가능성을 함께 봐야 하므로 win-architect 에이전트가 적합합니다.\n</commentary>\n</example>"
 model: kimi-k2.5
-color: green
+color: blue
 memory: project
 win_project_path: PROJECT_ROOT
 ---
