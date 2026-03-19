@@ -91,15 +91,6 @@ public static class AudioLogger
     }
 
     /// <summary>
-    /// 디버그 로그 (상세 정보) - DEBUG 빌드에서만 컴파일됨.
-    /// </summary>
-    [Conditional("DEBUG")]
-    public static void LogDebug(string message)
-    {
-        WriteLog(LogLevel.Debug, message);
-    }
-
-    /// <summary>
     /// 버퍼 상태 로그 (성능에 민감한 경로에서 사용) - DEBUG 빌드에서만 컴파일됨.
     /// </summary>
     [Conditional("DEBUG")]
