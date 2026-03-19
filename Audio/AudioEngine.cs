@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
@@ -47,6 +48,12 @@ public sealed class AudioEngine : IDisposable
     /// DataAvailable 스레드에서만 사용 → 스레드 안전.
     /// </summary>
     private float[] _convertBuffer = Array.Empty<float>();
+
+    /// <summary>
+    /// 모노→스테레오 변환을 위한 임시 버퍼.
+    /// 캡처가 모노(1ch)인 경우 스테레오(2ch)로 업믹스하여 저장.
+    /// </summary>
+    private float[] _stereoConvertBuffer = Array.Empty<float>();
 
     /// <summary>
     /// float[] → byte[] 변환 후 AddSamples로 전달하기 위한 임시 byte 배열.
@@ -143,6 +150,9 @@ public sealed class AudioEngine : IDisposable
         if (IsRunning)
             throw new InvalidOperationException("AudioEngine is already running. Call Stop() first.");
 
+        AudioLogger.Initialize();
+        AudioLogger.WriteLog(AudioLogger.LogLevel.Info, "=== AudioEngine.Start() called ===");
+
         var settingsList = channelSettings.ToList();
 
         // ── 1. WasapiCapture 생성 ────────────────────────────────────────
@@ -157,12 +167,14 @@ public sealed class AudioEngine : IDisposable
 
         // 캡처 포맷 확인 (16-bit PCM, 24-bit PCM, 32-bit float 등)
         var captureNativeFormat = _capture.WaveFormat;
+        AudioLogger.WriteLog(AudioLogger.LogLevel.Info, $"Capture Native Format: {captureNativeFormat.SampleRate}Hz, {captureNativeFormat.Channels}ch, {captureNativeFormat.BitsPerSample}bit, {captureNativeFormat.Encoding}");
 
         // 내부 처리 포맷: 항상 IEEE Float 32-bit Stereo로 통일
         // 이렇게 하면 ChannelDspProvider가 항상 float 연산만 수행하면 됨
         _captureFloatFormat = WaveFormat.CreateIeeeFloatWaveFormat(
             captureNativeFormat.SampleRate,
-            captureNativeFormat.Channels);
+            2); // 강제로 스테레로 - 출력 장치 대부분이 스테레오
+        AudioLogger.WriteLog(AudioLogger.LogLevel.Info, $"Capture Float Format: {_captureFloatFormat.SampleRate}Hz, {_captureFloatFormat.Channels}ch, {_captureFloatFormat.BitsPerSample}bit, {_captureFloatFormat.Encoding}");
 
         // ── 2. OutputChannel 초기화 ──────────────────────────────────────
         // DeviceId가 있는 채널만 초기화 (null이면 건너뜀)
@@ -189,9 +201,10 @@ public sealed class AudioEngine : IDisposable
                 // ChannelError 이벤트 구독: Hot-unplug 등 오류를 AudioEngine이 중계
                 channel.ChannelError += OnChannelError;
 
-                // 채널 초기화 및 WasapiOut 연결
+                // 채널 초기화 (Start는 나중에 - 캡처 시작 후 프리필을 위해)
+                AudioLogger.WriteLog(AudioLogger.LogLevel.Info, $"Initializing Channel {settings.ChannelIndex} -> {targetDevice.FriendlyName}");
                 channel.Initialize(targetDevice, _captureFloatFormat, settings);
-                channel.Start();
+                // Note: channel.Start()는 캡처 시작 후에 호출됨 (프리필을 위해)
             }
             catch (Exception ex)
             {
@@ -205,9 +218,33 @@ public sealed class AudioEngine : IDisposable
         _capture.DataAvailable += OnDataAvailable;
         _capture.RecordingStopped += OnCaptureStopped;
 
-        // ── 4. 캡처 시작 ─────────────────────────────────────────────────
+        // ── 4. 캡처 시작 (먼저 시작해서 버퍼에 데이터 채움) ────────────────
         _capture.StartRecording();
+        AudioLogger.WriteLog(AudioLogger.LogLevel.Info, "Capture started, waiting for prefill...");
+
+        // ── 5. 모든 채널 시작 (캡처 후에 시작해서 프리필 가능하게 함) ──────
+        foreach (var settings in settingsList.Where(s => s.ChannelIndex < MaxChannels))
+        {
+            if (string.IsNullOrEmpty(settings.DeviceId))
+                continue;
+
+            try
+            {
+                var channel = _channels[settings.ChannelIndex];
+                if (channel.Buffer != null)  // Initialize 성공한 채널만
+                {
+                    channel.Start();
+                    AudioLogger.WriteLog(AudioLogger.LogLevel.Info, $"Channel {settings.ChannelIndex} started successfully");
+                }
+            }
+            catch (Exception ex)
+            {
+                EngineError?.Invoke(this, $"채널 {settings.ChannelIndex} 시작 실패: {ex.Message}");
+            }
+        }
+
         IsRunning = true;
+        AudioLogger.WriteLog(AudioLogger.LogLevel.Info, "=== AudioEngine.Start() completed - Recording started ===");
     }
 
     // ─────────────────────────────────────────────────────────
@@ -219,6 +256,7 @@ public sealed class AudioEngine : IDisposable
     /// </summary>
     public void Stop()
     {
+        AudioLogger.WriteLog(AudioLogger.LogLevel.Info, "=== AudioEngine.Stop() called ===");
         IsRunning = false;
 
         // 캡처 중지
@@ -259,47 +297,115 @@ public sealed class AudioEngine : IDisposable
     /// 이 메서드는 WasapiCapture 전용 스레드에서 실행되므로
     /// UI 스레드나 WasapiOut 스레드와 공유 상태를 갖지 않는다.
     /// </summary>
+    private long _captureEventCount = 0;
+
     private void OnDataAvailable(object? sender, WaveInEventArgs e)
     {
-        if (e.BytesRecorded == 0) return;
+        if (e.BytesRecorded == 0)
+        {
+            AudioLogger.WriteLog(AudioLogger.LogLevel.Debug, "OnDataAvailable: BytesRecorded=0, skipping");
+            return;
+        }
+
+        _captureEventCount++;
+        var captureFormat = _capture!.WaveFormat;
+
+        AudioLogger.WriteLog(AudioLogger.LogLevel.Debug, $"[CAPTURE#{_captureEventCount}] Raw: {e.BytesRecorded}B, " +
+                         $"Format={captureFormat.SampleRate}Hz/{captureFormat.Channels}ch/{captureFormat.BitsPerSample}bit/{captureFormat.Encoding}");
 
         // ── float 변환 ───────────────────────────────────────────────────
-        // 원본 포맷(16bit PCM 등)을 IEEE float으로 변환하여 _convertBuffer에 저장
         int floatSampleCount = ConvertToFloat(
             e.Buffer,
             e.BytesRecorded,
-            _capture!.WaveFormat,
+            captureFormat,
             ref _convertBuffer);
 
-        if (floatSampleCount == 0) return;
+        AudioLogger.WriteLog(AudioLogger.LogLevel.Debug, $"[CAPTURE#{_captureEventCount}] Converted: {floatSampleCount} float samples");
+
+        if (floatSampleCount == 0)
+        {
+            AudioLogger.WriteLog(AudioLogger.LogLevel.Error, "ConvertToFloat returned 0 samples");
+            return;
+        }
+
+        // ── 모노→스테레오 변환 (필요시) ────────────────────────────────────
+        // 출력 장치 대부분이 스테레오(2ch)이므로 모노 입력을 스테레오로 업믹스
+        // MediaFoundationResampler 대신 여기서 처리하여 출력 스레드 블록 방지
+        float[] finalBuffer;
+        int finalSampleCount;
+        int finalChannels;
+
+        if (_captureFloatFormat!.Channels == 1)
+        {
+            // 모노 → 스테레오: 각 샘플을 L, R에 복제
+            finalSampleCount = floatSampleCount * 2;
+            if (_stereoConvertBuffer.Length < finalSampleCount)
+                _stereoConvertBuffer = new float[finalSampleCount];
+
+            for (int i = 0; i < floatSampleCount; i++)
+            {
+                float sample = _convertBuffer[i];
+                _stereoConvertBuffer[i * 2] = sample;      // Left
+                _stereoConvertBuffer[i * 2 + 1] = sample;  // Right
+            }
+
+            finalBuffer = _stereoConvertBuffer;
+            finalChannels = 2;
+        }
+        else
+        {
+            // 이미 스테레오 이상
+            finalBuffer = _convertBuffer;
+            finalSampleCount = floatSampleCount;
+            finalChannels = _captureFloatFormat.Channels;
+        }
 
         // ── byte 배열로 래핑 ─────────────────────────────────────────────
         // BufferedWaveProvider.AddSamples()는 byte[] 인터페이스이므로
         // float 배열을 byte 배열로 zero-copy 재해석한다.
-        int byteCount = floatSampleCount * sizeof(float);
+        int byteCount = finalSampleCount * sizeof(float);
 
         if (_addSamplesBuffer.Length < byteCount)
             _addSamplesBuffer = new byte[byteCount];
 
         // MemoryMarshal: float[] → byte[] 변환 (메모리 복사 없음)
-        MemoryMarshal.Cast<float, byte>(_convertBuffer.AsSpan(0, floatSampleCount))
+        MemoryMarshal.Cast<float, byte>(finalBuffer.AsSpan(0, finalSampleCount))
             .CopyTo(_addSamplesBuffer.AsSpan(0, byteCount));
 
         // ── 각 채널 버퍼에 데이터 복사 (1 Writer → N Independent Buffers) ──
         // 이 루프가 전체 아키텍처의 핵심이다.
         // 각 채널의 BufferedWaveProvider는 독립적이며, 이 스레드만 AddSamples를 호출한다.
         // → 채널 간 공유 상태 없음, 데드락 위험 없음
+        // P0 DEBUG: 각 캡처 이벤트마다 버퍼 상태 로깅
+        int activeChannelCount = 0;
+        int addedChannelCount = 0;
+
         foreach (var channel in _channels)
         {
-            // P1 Fix: Race Condition 방어
-            // channel.Buffer는 다른 스레드에서 null로 설정될 수 있으므로
-            // 먼저 IsActive만 체크하고 Buffer 접근은 null-conditional로 처리
-            if (!channel.IsActive) continue;
+            var buffer = channel.Buffer;
+            if (buffer == null)
+            {
+                AudioLogger.WriteLog(AudioLogger.LogLevel.Debug, $"[CAPTURE#{_captureEventCount}] [Ch{channel.ChannelIndex}] Buffer is null, skipping");
+                continue;
+            }
+            activeChannelCount++;
 
-            // AddSamples: 내부적으로 채널 자체의 lock만 사용
-            // DiscardOnBufferOverflow = true이므로 가득 찼을 때 가장 오래된 데이터 드롭
-            channel.Buffer?.AddSamples(_addSamplesBuffer, 0, byteCount);
+            int bufferedBytesBefore = buffer.BufferedBytes;
+            int maxBytes = (int)(buffer.BufferDuration.TotalSeconds * buffer.WaveFormat.AverageBytesPerSecond);
+
+            AudioLogger.WriteLog(AudioLogger.LogLevel.Debug, $"[CAPTURE#{_captureEventCount}] [Ch{channel.ChannelIndex}] Before AddSamples: " +
+                             $"Buffered={bufferedBytesBefore}B/{maxBytes}B ({bufferedBytesBefore * 100 / maxBytes}%), " +
+                             $"Adding={byteCount}B");
+
+            buffer.AddSamples(_addSamplesBuffer, 0, byteCount);
+            int bufferedBytesAfter = buffer.BufferedBytes;
+            addedChannelCount++;
+
+            AudioLogger.WriteLog(AudioLogger.LogLevel.Debug, $"[CAPTURE#{_captureEventCount}] [Ch{channel.ChannelIndex}] After AddSamples: " +
+                             $"Buffered={bufferedBytesAfter}B ({bufferedBytesAfter * 1000 / buffer.WaveFormat.AverageBytesPerSecond}ms worth)");
         }
+
+        AudioLogger.WriteLog(AudioLogger.LogLevel.Debug, $"[CAPTURE#{_captureEventCount}] Summary: ActiveChannels={activeChannelCount}, AddedTo={addedChannelCount}, TotalBytes={byteCount}");
     }
 
     // ─────────────────────────────────────────────────────────
